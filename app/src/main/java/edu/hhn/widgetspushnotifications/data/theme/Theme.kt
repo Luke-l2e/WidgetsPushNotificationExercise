@@ -1,6 +1,5 @@
-package edu.hhn.widgetspushnotifications.ui.theme
+package edu.hhn.widgetspushnotifications.data.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

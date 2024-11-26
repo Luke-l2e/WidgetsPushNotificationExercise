@@ -1,4 +1,4 @@
-package edu.hhn.widgetspushnotifications.ui.theme
+package edu.hhn.widgetspushnotifications.data.theme
 
 import androidx.compose.ui.graphics.Color
 

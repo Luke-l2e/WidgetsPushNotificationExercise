@@ -40,6 +40,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.datastore.preferences)
+
     implementation(project(":FirebaseConnector"))
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)

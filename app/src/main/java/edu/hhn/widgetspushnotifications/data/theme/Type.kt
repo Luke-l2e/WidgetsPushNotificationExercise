@@ -1,4 +1,4 @@
-package edu.hhn.widgetspushnotifications.ui.theme
+package edu.hhn.widgetspushnotifications.data.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

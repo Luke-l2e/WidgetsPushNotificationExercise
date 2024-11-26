@@ -2,141 +2,100 @@ package edu.hhn.widgetspushnotifications.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.action.ActionParameters
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
-import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
+import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
-import androidx.glance.preview.ExperimentalGlancePreviewApi
-import androidx.glance.preview.Preview
+import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import edu.hhn.widgetspushnotifications.R
+import edu.hhn.widgetspushnotifications.data.DataStoreManager
+import kotlinx.coroutines.launch
 
-object Widget : GlanceAppWidget() {
-    val countKey = intPreferencesKey("count")
-
+class Widget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
-            WidgetContent(count = currentState(key = countKey) ?: 0)
+            WidgetContent(context)
         }
     }
-}
 
-@Composable
-fun WidgetContent(count: Int) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally, modifier = GlanceModifier
-            .background(ColorProvider(Color(67, 146, 165, 255)))
-    ) {
-        Row(
-            modifier = GlanceModifier.fillMaxWidth(),
+    @Composable
+    fun WidgetContent(context: Context) {
+        var counter by remember { mutableIntStateOf(0) }
+        val coroutineScope = rememberCoroutineScope()
+        LaunchedEffect(Unit) {
+            coroutineScope.launch {
+                DataStoreManager.getCounter(context).collect {
+                    counter = it
+                }
+            }
+        }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalAlignment = Alignment.CenterVertically,
-            horizontalAlignment = Alignment.CenterHorizontally
-        )
-        {
-            Image(
-                provider = ImageProvider(R.drawable.round_remove_24),
-                contentDescription = "Decrease",
-                modifier = GlanceModifier.clickable(actionRunCallback<DecrementActionCallback>())
+            modifier = GlanceModifier.fillMaxSize()
+                .background(ColorProvider(Color(67, 146, 165, 255))).cornerRadius(5.dp)
+        ) {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = Alignment.CenterHorizontally
             )
-            Text(
-                text = count.toString(),
-                style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    color = ColorProvider(Color.White),
-                    fontSize = 26.sp
+            {
+                Image(
+                    provider = ImageProvider(R.drawable.round_remove_24),
+                    contentDescription = "Decrease",
+                    modifier = GlanceModifier.clickable(actionRunCallback<DecrementActionCallback>())
                 )
+                Text(
+                    text = counter.toString(),
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        color = ColorProvider(Color.White),
+                        fontSize = 26.sp
+                    ), modifier = GlanceModifier.padding(horizontal = 5.dp)
+                )
+                Image(
+                    provider = ImageProvider(R.drawable.round_add_24),
+                    contentDescription = "Increase",
+                    modifier = GlanceModifier.clickable(actionRunCallback<IncrementActionCallback>())
+                )
+            }
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalAlignment = Alignment.CenterHorizontally
             )
-            Image(
-                provider = ImageProvider(R.drawable.round_add_24),
-                contentDescription = "Increase",
-                modifier = GlanceModifier.clickable(actionRunCallback<IncrementActionCallback>())
-            )
-        }
-        Row(
-            modifier = GlanceModifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalAlignment = Alignment.CenterHorizontally
-        )
-        {
-            Image(
-                provider = ImageProvider(R.drawable.round_send_24),
-                contentDescription = "Send",
-                modifier = GlanceModifier.clickable(actionRunCallback<ResetActionCallback>())
-            )
+            {
+                Image(
+                    provider = ImageProvider(R.drawable.round_send_24),
+                    contentDescription = "Send",
+                    modifier = GlanceModifier.clickable(actionRunCallback<UpdateActionCallback>())
+                )
+            }
         }
     }
-}
-
-@OptIn(ExperimentalGlancePreviewApi::class)
-@Preview
-@Composable
-fun PreviewWidget() {
-    WidgetContent(count = 0)
-}
-
-
-class IncrementActionCallback : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters
-    ) {
-        updateAppWidgetState(context, glanceId) { prefs ->
-            val currentCount = prefs[Widget.countKey] ?: 0
-            prefs[Widget.countKey] = currentCount + 1
-        }
-        Widget.update(context, glanceId)
-    }
-}
-
-class DecrementActionCallback : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters
-    ) {
-        updateAppWidgetState(context, glanceId) { prefs ->
-            val currentCount = prefs[Widget.countKey] ?: 0
-            if (currentCount > 0) prefs[Widget.countKey] = currentCount - 1
-        }
-        Widget.update(context, glanceId)
-    }
-}
-
-class ResetActionCallback : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters
-    ) {
-        updateAppWidgetState(context, glanceId) { prefs ->
-            prefs[Widget.countKey] = 0
-        }
-        Widget.update(context, glanceId)
-    }
-}
-
-class WidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget
-        get() = Widget
 }

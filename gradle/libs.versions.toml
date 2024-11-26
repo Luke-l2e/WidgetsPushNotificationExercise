@@ -1,5 +1,6 @@
 [versions]
 agp = "8.7.2"
+datastorePreferencesVersion = "1.1.1"
 glancePreview = "1.1.1"
 kotlin = "2.0.0"
 coreKtx = "1.10.1"
@@ -14,10 +15,13 @@ material = "1.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-datastore-preferences-rxjava2 = { module = "androidx.datastore:datastore-preferences-rxjava2", version.ref = "datastorePreferencesVersion" }
+androidx-datastore-preferences-rxjava3 = { module = "androidx.datastore:datastore-preferences-rxjava3", version.ref = "datastorePreferencesVersion" }
 androidx-glance = { module = "androidx.glance:glance", version.ref = "glancePreview" }
 androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glancePreview" }
 androidx-glance-appwidget-preview = { module = "androidx.glance:glance-appwidget-preview", version.ref = "glancePreview" }
 androidx-glance-preview = { module = "androidx.glance:glance-preview", version.ref = "glancePreview" }
+datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferencesVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
