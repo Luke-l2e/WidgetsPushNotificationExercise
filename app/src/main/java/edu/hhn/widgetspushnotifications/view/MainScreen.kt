@@ -1,15 +1,7 @@
 package edu.hhn.widgetspushnotifications.view
 
-import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
+import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.widget.Toast
-import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -31,6 +23,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -38,21 +31,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
+import androidx.datastore.core.IOException
 import androidx.lifecycle.LifecycleCoroutineScope
 import edu.hhn.firebaseconnector.NotificationHelper
-import edu.hhn.widgetspushnotifications.R
 import edu.hhn.widgetspushnotifications.data.Colors
 import edu.hhn.widgetspushnotifications.data.DataStoreManager
+import edu.hhn.widgetspushnotifications.model.askForNotificationPermission
+import edu.hhn.widgetspushnotifications.model.createNotificationChannel
+import edu.hhn.widgetspushnotifications.model.initializeFirebaseCloudMessaging
 import kotlinx.coroutines.launch
 
-private const val CHANNEL_ID = "notification_channel_id"
-private const val CHANNEL_NAME = "Notifications"
-private const val CHANNEL_DESCRIPTION = "Channel for notifications"
-private const val CHANNEL_IMPORTANCE = NotificationManager.IMPORTANCE_DEFAULT
+private const val PERMISSION_GRANTED = "Permission granted"
+private const val PERMISSION_REQUIRED = "Notification permission is required for this app"
 
-// TODO: FCM Broadcast Listener
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -65,23 +56,26 @@ fun MainScreen(
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
-            if (isGranted) {
-                Toast.makeText(context, "Permission granted!", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(
-                    context,
-                    "Notification permission is required for this app",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            val message = if (isGranted) PERMISSION_GRANTED else PERMISSION_REQUIRED
+            lifecycleScope.launch { snackbarHostState.showSnackbar(message) }
         }
     )
 
     LaunchedEffect(Unit) {
-        setupNotification(context, notificationPermissionLauncher)
+        try {
+            askForNotificationPermission(context, notificationPermissionLauncher)
+        } catch (e: ActivityNotFoundException) {
+            e.localizedMessage?.let { snackbarHostState.showSnackbar(it) }
+        }
+        createNotificationChannel(context)
+        initializeFirebaseCloudMessaging(lifecycleScope, snackbarHostState, context)
         lifecycleScope.launch {
-            DataStoreManager.getCounter(context).collect {
-                counter = it
+            try {
+                DataStoreManager.getCounter(context).collect {
+                    counter = it
+                }
+            } catch (e: IOException) {
+                e.localizedMessage?.let { snackbarHostState.showSnackbar(it) }
             }
         }
     }
@@ -122,28 +116,11 @@ fun MainScreen(
                     onValueChange = { fieldValue.value = it },
                     singleLine = true,
                     label = { Text("Custom message") }, trailingIcon = {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.Send,
-                            contentDescription = "Send",
-                            modifier = Modifier.clickable {
-                                lifecycleScope.launch {
-                                    try {
-                                        NotificationHelper.sendNotification(
-                                            "Textfield", fieldValue.value,
-                                            callback = { isSuccess, message ->
-                                                if (isSuccess) {
-                                                    sendNotification(context, "Success", message)
-                                                } else {
-                                                    sendNotification(context, "Failed", message)
-                                                }
-                                            },
-                                        )
-                                        DataStoreManager.modifyCounter(context, 1)
-                                    } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar("Unexpected Error")
-                                    }
-                                }
-                            }
+                        TrailingIconToSendText(
+                            lifecycleScope,
+                            fieldValue, counter,
+                            snackbarHostState,
+                            context
                         )
                     }, colors = Colors.getTextFieldColors(), modifier = Modifier.fillMaxWidth(.8f)
                 )
@@ -152,58 +129,43 @@ fun MainScreen(
     }
 }
 
-private fun setupNotification(
-    context: Context,
-    notificationPermissionLauncher: ManagedActivityResultLauncher<String, Boolean>
+/**
+ * The send-icon, allowing the user to send the text from the text field.
+ *
+ * @param lifecycleScope the lifecycle-aware coroutine scope for asynchronous operations
+ * @param fieldValue a mutable state representing the current text input value
+ * @param counter an integer counter to include in the notification
+ * @param snackbarHostState the SnackbarHostState used to show feedback messages
+ * @param context the application context
+ */
+@Composable
+private fun TrailingIconToSendText(
+    lifecycleScope: LifecycleCoroutineScope,
+    fieldValue: MutableState<String>, counter: Int,
+    snackbarHostState: SnackbarHostState,
+    context: Context
 ) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) != PackageManager.PERMISSION_GRANTED
-    ) {
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-}
-
-/**
- * Create a notificationChannel
- */
-fun createNotificationChannel(context: Context) {
-    val notificationManager: NotificationManager =
-        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-    if (notificationManager.getNotificationChannel(CHANNEL_ID) == null) {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            CHANNEL_NAME,
-            CHANNEL_IMPORTANCE
-        ).apply {
-            description = CHANNEL_DESCRIPTION
+    Icon(
+        Icons.AutoMirrored.Rounded.Send,
+        contentDescription = "Send",
+        modifier = Modifier.clickable {
+            lifecycleScope.launch {
+                try {
+                    NotificationHelper.sendNotification(
+                        "Counter: $counter", fieldValue.value,
+                        callback = { isSuccess, message ->
+                            lifecycleScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message
+                                )
+                            }
+                        },
+                    )
+                    DataStoreManager.modifyCounter(context, 1)
+                } catch (e: Exception) {
+                    e.localizedMessage?.let { snackbarHostState.showSnackbar(it) }
+                }
+            }
         }
-        notificationManager.createNotificationChannel(channel)
-    }
-}
-
-/**
- * Creates a notification
- * @param context Context: Localcontext.current
- * @param contentTitle String: The title to show
- * @param contentText String: The text to show
- */
-fun sendNotification(context: Context, contentTitle: String, contentText: String) {
-    createNotificationChannel(context)
-    val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-        .setSmallIcon(R.mipmap.ic_launcher)
-        .setContentTitle(contentTitle)
-        .setContentText(contentText)
-        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-        .build()
-
-    val notificationManager =
-        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-    Handler(Looper.getMainLooper()).post {
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
-    }
+    )
 }
