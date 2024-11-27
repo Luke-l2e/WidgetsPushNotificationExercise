@@ -7,7 +7,7 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.runtime.Composable
 
-class Utils {
+class Colors {
     companion object {
 
         @Composable
