@@ -35,6 +35,9 @@ import edu.hhn.widgetspushnotifications.R
 import edu.hhn.widgetspushnotifications.data.DataStoreManager
 import kotlinx.coroutines.launch
 
+/**
+ * Represents the widget for this app. Extends `GlanceAppWidget`.
+ */
 class Widget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
@@ -42,6 +45,11 @@ class Widget : GlanceAppWidget() {
         }
     }
 
+    /**
+     * The content of the widget
+     *
+     * @param context the application context
+     */
     @Composable
     fun WidgetContent(context: Context) {
         var counter by remember { mutableIntStateOf(0) }

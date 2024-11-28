@@ -9,7 +9,9 @@ import androidx.compose.runtime.Composable
 
 class Colors {
     companion object {
-
+        /**
+         * Returns custom colors for a TopAppBar
+         */
         @Composable
         @OptIn(ExperimentalMaterial3Api::class)
         fun getTopAppBarColors(): TopAppBarColors {
@@ -22,6 +24,9 @@ class Colors {
             )
         }
 
+        /**
+         * Returns custom colors for a TextField
+         */
         @Composable
         fun getTextFieldColors(): TextFieldColors {
             return TextFieldColors(

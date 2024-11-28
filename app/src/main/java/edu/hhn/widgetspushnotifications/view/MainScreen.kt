@@ -44,6 +44,11 @@ import kotlinx.coroutines.launch
 private const val PERMISSION_GRANTED = "Permission granted"
 private const val PERMISSION_REQUIRED = "Notification permission is required for this app"
 
+/**
+ * The main screen of the app
+ * @param context the application context
+ * @param lifecycleScope the lifecycle-aware coroutine scope for asynchronous operations
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -119,8 +124,7 @@ fun MainScreen(
                         TrailingIconToSendText(
                             lifecycleScope,
                             fieldValue, counter,
-                            snackbarHostState,
-                            context
+                            snackbarHostState
                         )
                     }, colors = Colors.getTextFieldColors(), modifier = Modifier.fillMaxWidth(.8f)
                 )
@@ -136,14 +140,12 @@ fun MainScreen(
  * @param fieldValue a mutable state representing the current text input value
  * @param counter an integer counter to include in the notification
  * @param snackbarHostState the SnackbarHostState used to show feedback messages
- * @param context the application context
  */
 @Composable
 private fun TrailingIconToSendText(
     lifecycleScope: LifecycleCoroutineScope,
     fieldValue: MutableState<String>, counter: Int,
-    snackbarHostState: SnackbarHostState,
-    context: Context
+    snackbarHostState: SnackbarHostState
 ) {
     Icon(
         Icons.AutoMirrored.Rounded.Send,
@@ -161,7 +163,6 @@ private fun TrailingIconToSendText(
                             }
                         },
                     )
-                    DataStoreManager.modifyCounter(context, 1)
                 } catch (e: Exception) {
                     e.localizedMessage?.let { snackbarHostState.showSnackbar(it) }
                 }

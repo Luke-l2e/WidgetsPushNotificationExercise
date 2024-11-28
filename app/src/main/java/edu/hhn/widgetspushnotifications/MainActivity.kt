@@ -8,7 +8,6 @@ import androidx.lifecycle.lifecycleScope
 import edu.hhn.widgetspushnotifications.data.theme.WidgetsPushNotificationsExerciseTheme
 import edu.hhn.widgetspushnotifications.view.MainScreen
 
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
